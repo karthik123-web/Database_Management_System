@@ -1,37 +1,62 @@
 import sqlite3
+import logging
+import sys
 
-class StudentDB:
-    def __init__(self, db_name):
-        self.conn = sqlite3.connect(db_name)
-        self.cursor = self.conn.cursor()
-        self.create_table()
+# Setup Professional Logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-    def create_table(self):
-        query = '''CREATE TABLE IF NOT EXISTS students 
-                   (id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                    name TEXT, branch TEXT, cgpa REAL)'''
-        self.cursor.execute(query)
+class StudentSystem:
+    def __init__(self):
+        try:
+            self.conn = sqlite3.connect('enterprise_data.db')
+            self.cursor = self.conn.cursor()
+            self.migrate_tables()
+            logging.info("Database Connection Established.")
+        except sqlite3.Error as e:
+            logging.error(f"Database Init Failed: {e}")
+            sys.exit()
+
+    def migrate_tables(self):
+        """Creates the schema if it doesn't exist."""
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS students 
+            (id INTEGER PRIMARY KEY AUTOINCREMENT, 
+             name TEXT NOT NULL, 
+             branch TEXT, 
+             cgpa REAL CHECK(cgpa <= 10.0))''')
         self.conn.commit()
 
-    def add_student(self, name, branch, cgpa):
-        query = "INSERT INTO students (name, branch, cgpa) VALUES (?, ?, ?)"
-        self.cursor.execute(query, (name, branch, cgpa))
-        self.conn.commit()
-        print(f"Successfully added: {name}")
+    def add_record(self, name, branch, cgpa):
+        """Adds a student with data validation."""
+        try:
+            if not name or cgpa < 0:
+                raise ValueError("Invalid Data Input")
+            self.cursor.execute("INSERT INTO students (name, branch, cgpa) VALUES (?, ?, ?)", (name, branch, cgpa))
+            self.conn.commit()
+            print(f"\n SUCCESS: Record created for {name}")
+        except Exception as e:
+            print(f"\n ERROR: Could not add record. {e}")
 
-    def show_all(self):
-        self.cursor.execute("SELECT * FROM students")
-        records = self.cursor.fetchall()
-        print("\n--- Current Student Records ---")
-        for r in records:
-            print(f"ID: {r[0]} | Name: {r[1]} | Branch: {r[2]} | CGPA: {r[3]}")
+    def fetch_analytics(self):
+        """Advanced query to show analytics instead of just a list."""
+        print("\n" + "="*40)
+        print("SYSTEM ANALYTICS & STUDENT RECORDS")
+        print("="*40)
+        self.cursor.execute("SELECT * FROM students ORDER BY cgpa DESC")
+        rows = self.cursor.fetchall()
+        
+        print(f"{'ID':<5} | {'NAME':<20} | {'BRANCH':<10} | {'CGPA':<5}")
+        print("-" * 50)
+        for row in rows:
+            print(f"{row[0]:<5} | {row[1]:<20} | {row[2]:<10} | {row[3]:<5}")
+        print("="*40)
 
-    def close(self):
-        self.conn.close()
-
-# --- Running the Project ---
+# --- Simulation of Heavy Logic ---
 if __name__ == "__main__":
-    db = StudentDB("college.db")
-    db.add_student("Muddam Karthik", "CSE", 7.6)
-    db.show_all()
-    db.close()
+    system = StudentSystem()
+    
+    # Adding your real profile data
+    system.add_record("Muddam Karthik", "CSE", 7.6) #
+    system.add_record("External User", "ECE", 8.2)
+    
+    # Show professional output
+    system.fetch_analytics()
